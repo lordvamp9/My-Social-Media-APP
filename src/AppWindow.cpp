@@ -1,0 +1,259 @@
+#include "AppWindow.h"
+#include <shellapi.h>
+#include <filesystem>
+#include <iostream>
+#include <fstream>
+#include <chrono>
+
+#pragma comment(lib, "shell32.lib")
+
+#define WM_TRAYICON (WM_USER + 1)
+#define IDI_APPICON 101
+
+void LogMessage(const std::wstring& message) {
+    std::wofstream logFile("debug.log", std::ios::app);
+    if (logFile.is_open()) {
+        logFile << message << std::endl;
+    }
+}
+
+AppWindow::AppWindow(HINSTANCE hInstance)
+    : m_hInstance(hInstance), m_hWnd(nullptr)
+{
+}
+
+AppWindow::~AppWindow()
+{
+    RemoveTrayIcon();
+}
+
+bool AppWindow::Initialize(int nCmdShow)
+{
+    LogMessage(L"Initializing AppWindow...");
+    const wchar_t CLASS_NAME[] = L"MySocialDesktopWindowClass";
+
+    // Load custom icon from embedded resource
+    HICON hIconBig = (HICON)LoadImageW(m_hInstance, MAKEINTRESOURCEW(IDI_APPICON), IMAGE_ICON, 48, 48, LR_DEFAULTCOLOR);
+    HICON hIconSmall = (HICON)LoadImageW(m_hInstance, MAKEINTRESOURCEW(IDI_APPICON), IMAGE_ICON, 16, 16, LR_DEFAULTCOLOR);
+
+    WNDCLASSEXW wc = { };
+    wc.cbSize        = sizeof(WNDCLASSEXW);
+    wc.lpfnWndProc   = AppWindow::WndProc;
+    wc.hInstance     = m_hInstance;
+    wc.lpszClassName = CLASS_NAME;
+    wc.hCursor       = LoadCursor(NULL, IDC_ARROW);
+    wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+    wc.hIcon         = hIconBig;
+    wc.hIconSm       = hIconSmall;
+
+    RegisterClassExW(&wc);
+
+    // Create a standard window first, we can make it borderless later by adjusting styles
+    m_hWnd = CreateWindowExW(
+        0, CLASS_NAME, L"",
+        WS_OVERLAPPEDWINDOW,
+        CW_USEDEFAULT, CW_USEDEFAULT, 1280, 800,
+        NULL, NULL, m_hInstance, this
+    );
+
+    if (m_hWnd == nullptr)
+    {
+        LogMessage(L"CreateWindowExW failed!");
+        return false;
+    }
+
+    // Set the window icon explicitly (taskbar + title bar)
+    SendMessage(m_hWnd, WM_SETICON, ICON_BIG, (LPARAM)hIconBig);
+    SendMessage(m_hWnd, WM_SETICON, ICON_SMALL, (LPARAM)hIconSmall);
+
+    SetupTrayIcon(m_hWnd);
+    InitializeWebView();
+
+    ShowWindow(m_hWnd, nCmdShow);
+    UpdateWindow(m_hWnd);
+
+    LogMessage(L"AppWindow initialized successfully.");
+    return true;
+}
+
+void AppWindow::SetupTrayIcon(HWND hWnd)
+{
+    ZeroMemory(&m_nid, sizeof(NOTIFYICONDATAW));
+    m_nid.cbSize = sizeof(NOTIFYICONDATAW);
+    m_nid.hWnd = hWnd;
+    m_nid.uID = 1;
+    m_nid.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
+    m_nid.uCallbackMessage = WM_TRAYICON;
+    m_nid.hIcon = (HICON)LoadImageW(m_hInstance, MAKEINTRESOURCEW(IDI_APPICON), IMAGE_ICON, 32, 32, LR_DEFAULTCOLOR);
+    wcscpy_s(m_nid.szTip, L"MySocialDesktop");
+
+    Shell_NotifyIconW(NIM_ADD, &m_nid);
+}
+
+void AppWindow::RemoveTrayIcon()
+{
+    Shell_NotifyIconW(NIM_DELETE, &m_nid);
+}
+
+void AppWindow::InitializeWebView()
+{
+    LogMessage(L"InitializeWebView started.");
+    // Step 1: Create Environment
+    HRESULT hr = CreateCoreWebView2EnvironmentWithOptions(nullptr, nullptr, nullptr,
+        Callback<ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler>(
+            [this](HRESULT result, ICoreWebView2Environment* env) -> HRESULT {
+                LogMessage(L"CreateCoreWebView2EnvironmentCompletedHandler invoked. Result: " + std::to_wstring(result));
+                if (FAILED(result) || !env) {
+                    LogMessage(L"Failed to create WebView2 Environment. HRESULT: " + std::to_wstring(result));
+                    MessageBoxW(m_hWnd, (L"Failed to create WebView2 Environment. HRESULT: " + std::to_wstring(result)).c_str(), L"Error", MB_ICONERROR);
+                    return result;
+                }
+                m_webViewEnvironment = env;
+                
+                // Step 2: Create Controller
+                LogMessage(L"Creating WebView2 Controller...");
+                HRESULT hrController = env->CreateCoreWebView2Controller(m_hWnd,
+                    Callback<ICoreWebView2CreateCoreWebView2ControllerCompletedHandler>(
+                        [this](HRESULT result, ICoreWebView2Controller* controller) -> HRESULT {
+                            LogMessage(L"CreateCoreWebView2ControllerCompletedHandler invoked. Result: " + std::to_wstring(result));
+                            if (FAILED(result) || !controller) {
+                                LogMessage(L"Failed to create WebView2 Controller. HRESULT: " + std::to_wstring(result));
+                                MessageBoxW(m_hWnd, (L"Failed to create WebView2 Controller. HRESULT: " + std::to_wstring(result)).c_str(), L"Error", MB_ICONERROR);
+                                return result;
+                            }
+                            m_webViewController = controller;
+                            m_webViewController->get_CoreWebView2(&m_webView);
+
+                            if (!m_webView) {
+                                LogMessage(L"m_webView is null!");
+                                MessageBoxW(m_hWnd, L"m_webView is null!", L"Error", MB_ICONERROR);
+                                return E_FAIL;
+                            }
+
+                            LogMessage(L"WebView2 Controller created. Setting up bounds and host mapping...");
+                            // Resize WebView to fit the bounds of the parent window
+                            ResizeWebView();
+
+                            // Add Virtual Host Mapping for local files
+                            wchar_t exePath[MAX_PATH];
+                            GetModuleFileNameW(NULL, exePath, MAX_PATH);
+                            std::filesystem::path appDir = std::filesystem::path(exePath).parent_path();
+                            // exe is in build_cpp/Release, so go up two levels to reach project root
+                            std::filesystem::path wwwDir = appDir.parent_path().parent_path() / "build" / "www";
+                            LogMessage(L"Mapped wwwDir: " + wwwDir.wstring());
+
+                            ComPtr<ICoreWebView2_3> webView3;
+                            HRESULT hrAs = m_webView.As(&webView3);
+                            if (SUCCEEDED(hrAs) && webView3) {
+                                LogMessage(L"Setting up Virtual Host Name mapping to folder...");
+                                HRESULT hrMap = webView3->SetVirtualHostNameToFolderMapping(
+                                    L"vamp9.local", 
+                                    wwwDir.c_str(), 
+                                    COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_ALLOW
+                                );
+                                LogMessage(L"Virtual Host mapping result: " + std::to_wstring(hrMap));
+                            } else {
+                                LogMessage(L"Failed to get ICoreWebView2_3 interface.");
+                                MessageBoxW(m_hWnd, L"Failed to get ICoreWebView2_3 interface.", L"Error", MB_ICONERROR);
+                            }
+
+                            // Navigate to our local app
+                            LogMessage(L"Navigating to local site...");
+                            m_webView->Navigate(L"https://vamp9.local/index.html");
+
+                            // Setup message passing from JS to C++ (e.g. for native notifications)
+                            m_webView->add_WebMessageReceived(
+                                Callback<ICoreWebView2WebMessageReceivedEventHandler>(
+                                    [this](ICoreWebView2* sender, ICoreWebView2WebMessageReceivedEventArgs* args) -> HRESULT {
+                                        PWSTR message;
+                                        args->TryGetWebMessageAsString(&message);
+                                        LogMessage(L"Message received from Web: " + std::wstring(message));
+                                        // Handle messages like showing toast notifications here
+                                        MessageBoxW(m_hWnd, message, L"Notificación de JS", MB_OK);
+                                        CoTaskMemFree(message);
+                                        return S_OK;
+                                    }).Get(), nullptr);
+
+                            return S_OK;
+                        }).Get());
+
+                if (FAILED(hrController)) {
+                    LogMessage(L"env->CreateCoreWebView2Controller failed. HRESULT: " + std::to_wstring(hrController));
+                    MessageBoxW(m_hWnd, (L"env->CreateCoreWebView2Controller failed. HRESULT: " + std::to_wstring(hrController)).c_str(), L"Error", MB_ICONERROR);
+                }
+                return S_OK;
+            }).Get());
+
+    if (FAILED(hr)) {
+        LogMessage(L"CreateCoreWebView2EnvironmentWithOptions failed. HRESULT: " + std::to_wstring(hr));
+        MessageBoxW(m_hWnd, (L"CreateCoreWebView2EnvironmentWithOptions failed. HRESULT: " + std::to_wstring(hr)).c_str(), L"Error", MB_ICONERROR);
+    }
+}
+
+void AppWindow::ResizeWebView()
+{
+    if (m_webViewController != nullptr) {
+        RECT bounds;
+        GetClientRect(m_hWnd, &bounds);
+        m_webViewController->put_Bounds(bounds);
+    }
+}
+
+LRESULT CALLBACK AppWindow::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+{
+    AppWindow* pThis = nullptr;
+
+    if (message == WM_NCCREATE)
+    {
+        CREATESTRUCT* pCreate = (CREATESTRUCT*)lParam;
+        pThis = (AppWindow*)pCreate->lpCreateParams;
+        SetWindowLongPtr(hWnd, GWLP_USERDATA, (LONG_PTR)pThis);
+    }
+    else
+    {
+        pThis = (AppWindow*)GetWindowLongPtr(hWnd, GWLP_USERDATA);
+    }
+
+    if (pThis)
+    {
+        return pThis->HandleMessage(hWnd, message, wParam, lParam);
+    }
+
+    return DefWindowProc(hWnd, message, wParam, lParam);
+}
+
+LRESULT AppWindow::HandleMessage(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+{
+    switch (message)
+    {
+    case WM_SIZE:
+        ResizeWebView();
+        break;
+    case WM_CLOSE:
+        // Minimize to tray instead of closing
+        ShowWindow(hWnd, SW_HIDE);
+        return 0;
+    case WM_TRAYICON:
+        if (lParam == WM_LBUTTONDBLCLK) {
+            ShowWindow(hWnd, SW_RESTORE);
+            SetForegroundWindow(hWnd);
+        }
+        break;
+    case WM_DESTROY:
+        PostQuitMessage(0);
+        break;
+    default:
+        return DefWindowProc(hWnd, message, wParam, lParam);
+    }
+    return 0;
+}
+
+void AppWindow::RunMessageLoop()
+{
+    MSG msg;
+    while (GetMessage(&msg, nullptr, 0, 0))
+    {
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
+    }
+}

@@ -1,0 +1,5 @@
+// Resource file for MySocialDesktop
+// IDI_APPICON is used for the window icon and system tray icon
+#define IDI_APPICON 101
+
+IDI_APPICON ICON "res/app.ico"

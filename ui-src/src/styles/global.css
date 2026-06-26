@@ -1,0 +1,75 @@
+@import "tailwindcss";
+
+@theme {
+  --color-msn-bg: #F3F8FD;
+  --color-msn-header: #8BB5F3;
+  --color-msn-header-dark: #6693DE;
+  --color-msn-chat: #FFFFFF;
+  --color-msn-border: #99BBE8;
+  --color-msn-sidebar: #E5F0FE;
+  --color-msn-active: #C1D8F9;
+  --color-msn-text: #1E395B;
+  --color-msn-link: #0000FF;
+  
+  --shadow-msn: 0 2px 4px rgba(0,0,0,0.1);
+  --shadow-msn-btn: inset 0 1px 0 rgba(255,255,255,0.7), 0 1px 2px rgba(0,0,0,0.1);
+}
+
+@layer utilities {
+  .msn-gradient {
+    background: linear-gradient(180deg, var(--color-msn-header) 0%, var(--color-msn-header-dark) 100%);
+  }
+  
+  .msn-btn {
+    background: linear-gradient(180deg, #FFFFFF 0%, #E4F1FD 100%);
+    border: 1px solid #739BCA;
+    box-shadow: var(--shadow-msn-btn);
+    color: var(--color-msn-text);
+    transition: all 0.2s;
+  }
+  
+  .msn-btn:hover {
+    background: linear-gradient(180deg, #FFFFFF 0%, #CDE3FA 100%);
+    border-color: #5580B3;
+  }
+  
+  .msn-btn:active {
+    background: linear-gradient(180deg, #CDE3FA 0%, #A9C9EE 100%);
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.2);
+  }
+  
+  .glass-card {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  }
+}
+
+body {
+  margin: 0;
+  font-family: 'Tahoma', 'Segoe UI', sans-serif;
+  color: var(--color-msn-text);
+  overflow: hidden;
+  background-image: url('/bg_grass.png');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+}
+
+/* Custom Scrollbar for MSN feel */
+::-webkit-scrollbar {
+  width: 12px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-msn-bg);
+  border-left: 1px solid var(--color-msn-border);
+}
+::-webkit-scrollbar-thumb {
+  background: #A6C8F2;
+  border: 1px solid #7FAAE0;
+  border-radius: 6px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #88B2E5;
+}
