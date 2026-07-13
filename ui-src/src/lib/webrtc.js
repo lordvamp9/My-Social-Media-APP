@@ -80,9 +80,12 @@ const handleConnection = (conn) => {
         break;
       case TYPE.NUDGE:
         addMessage({ id: uuidv4(), senderId, type: TYPE.NUDGE, text: 'Te ha enviado un zumbido.', timestamp: Date.now() });
-        const nudgeAudio = new Audio('https://assets.mixkit.co/active_storage/sfx/2578/2578-preview.mp3');
+        const nudgeAudio = new Audio('/nudge.mp3');
         nudgeAudio.play().catch(e=>{});
-        // Shake animation could be triggered by state
+        useStore.getState().triggerNudge();
+        if (window.chrome && window.chrome.webview) {
+          window.chrome.webview.postMessage("nudge");
+        }
         break;
       case TYPE.SYSTEM:
         addMessage({ id: uuidv4(), type: TYPE.SYSTEM, text, timestamp: Date.now() });
@@ -118,10 +121,17 @@ export const sendMessage = (text) => {
 };
 
 export const sendNudge = () => {
-  const { myId } = useStore.getState();
+  const { myId, triggerNudge } = useStore.getState();
   const data = { type: TYPE.NUDGE, senderId: myId };
   broadcast(data);
   useStore.getState().addMessage({ id: uuidv4(), type: TYPE.NUDGE, senderId: myId, text: 'Has enviado un zumbido.', timestamp: Date.now() });
+  
+  const nudgeAudio = new Audio('/nudge.mp3');
+  nudgeAudio.play().catch(e=>{});
+  triggerNudge();
+  if (window.chrome && window.chrome.webview) {
+    window.chrome.webview.postMessage("nudge");
+  }
 };
 
 export const sendFile = (file) => {

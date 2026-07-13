@@ -3,10 +3,10 @@ import Sidebar from './Sidebar';
 import ChatArea from './ChatArea';
 
 export default function ChatLayout() {
-  const { isHost } = useStore();
+  const { isHost, isNudging } = useStore();
 
   return (
-    <div className="w-full h-full flex bg-msn-bg relative overflow-hidden">
+    <div className={`w-full h-full flex bg-msn-bg relative overflow-hidden ${isNudging ? 'nudge-shake' : ''}`}>
       {/* Discord-style Sidebar with MSN colors */}
       <Sidebar />
       

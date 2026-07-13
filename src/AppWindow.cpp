@@ -50,7 +50,7 @@ bool AppWindow::Initialize(int nCmdShow)
 
     // Create a standard window first, we can make it borderless later by adjusting styles
     m_hWnd = CreateWindowExW(
-        0, CLASS_NAME, L"",
+        0, CLASS_NAME, L"MySocialDesktop",
         WS_OVERLAPPEDWINDOW,
         CW_USEDEFAULT, CW_USEDEFAULT, 1280, 800,
         NULL, NULL, m_hInstance, this
@@ -177,9 +177,36 @@ void AppWindow::InitializeWebView()
                                     [this](ICoreWebView2* sender, ICoreWebView2WebMessageReceivedEventArgs* args) -> HRESULT {
                                         PWSTR message;
                                         args->TryGetWebMessageAsString(&message);
-                                        LogMessage(L"Message received from Web: " + std::wstring(message));
-                                        // Handle messages like showing toast notifications here
-                                        MessageBoxW(m_hWnd, message, L"Notificación de JS", MB_OK);
+                                        std::wstring msgStr(message);
+                                        LogMessage(L"Message received from Web: " + msgStr);
+                                        
+                                        if (msgStr == L"nudge") {
+                                            // Shake the native window!
+                                            RECT rect;
+                                            GetWindowRect(m_hWnd, &rect);
+                                            int originalX = rect.left;
+                                            int originalY = rect.top;
+                                            int width = rect.right - rect.left;
+                                            int height = rect.bottom - rect.top;
+                                            
+                                            const int offsets[][2] = {
+                                                { 10, 0 }, { -10, 0 }, { 0, 10 }, { 0, -10 },
+                                                { 8, -8 }, { -8, 8 }, { 5, 5 }, { -5, -5 },
+                                                { 3, 0 }, { -3, 0 }, { 0, 3 }, { 0, -3 }
+                                            };
+                                            
+                                            for (auto offset : offsets) {
+                                                SetWindowPos(m_hWnd, NULL, originalX + offset[0], originalY + offset[1], width, height, SWP_NOZORDER | SWP_NOACTIVATE);
+                                                Sleep(25);
+                                            }
+                                            
+                                            // Restore original position
+                                            SetWindowPos(m_hWnd, NULL, originalX, originalY, width, height, SWP_NOZORDER | SWP_NOACTIVATE);
+                                        } else {
+                                            // Handle other messages like showing toast notifications here
+                                            MessageBoxW(m_hWnd, message, L"Notificación de JS", MB_OK);
+                                        }
+                                        
                                         CoTaskMemFree(message);
                                         return S_OK;
                                     }).Get(), nullptr);
@@ -247,6 +274,33 @@ LRESULT AppWindow::HandleMessage(HWND hWnd, UINT message, WPARAM wParam, LPARAM 
         if (lParam == WM_LBUTTONDBLCLK) {
             ShowWindow(hWnd, SW_RESTORE);
             SetForegroundWindow(hWnd);
+        }
+        else if (lParam == WM_RBUTTONUP) {
+            HMENU hMenu = CreatePopupMenu();
+            if (hMenu) {
+                InsertMenuW(hMenu, 0, MF_BYPOSITION | MF_STRING, 1, L"Restaurar");
+                InsertMenuW(hMenu, 1, MF_BYPOSITION | MF_STRING, 2, L"Cerrar");
+                
+                POINT pt;
+                GetCursorPos(&pt);
+                
+                SetForegroundWindow(hWnd);
+                TrackPopupMenu(hMenu, TPM_BOTTOMALIGN | TPM_LEFTALIGN, pt.x, pt.y, 0, hWnd, NULL);
+                DestroyMenu(hMenu);
+            }
+        }
+        break;
+    case WM_COMMAND:
+        {
+            int wmId = LOWORD(wParam);
+            if (wmId == 1) { // Restaurar
+                ShowWindow(hWnd, SW_RESTORE);
+                SetForegroundWindow(hWnd);
+            }
+            else if (wmId == 2) { // Cerrar
+                RemoveTrayIcon();
+                DestroyWindow(hWnd);
+            }
         }
         break;
     case WM_DESTROY:

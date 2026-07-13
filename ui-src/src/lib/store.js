@@ -29,6 +29,13 @@ export const useStore = create((set, get) => ({
   remoteStream: null,
   incomingCall: null,
   isScreenSharing: false,
+  isNudging: false,
+  triggerNudge: () => {
+    set({ isNudging: true });
+    setTimeout(() => {
+      set({ isNudging: false });
+    }, 1000);
+  },
   
   // Game state
   gameOpen: false,
