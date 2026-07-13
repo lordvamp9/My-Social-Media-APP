@@ -147,13 +147,41 @@ export const sendFile = (file) => {
 };
 
 // --- Call Logic (Video / Audio / Screen Share) ---
+const getLocalMediaStream = async (requestedVideo) => {
+  // Try 1: Tómalo todo (video y audio)
+  try {
+    return await navigator.mediaDevices.getUserMedia({ video: requestedVideo, audio: true });
+  } catch (err) {
+    console.warn("Failed to get stream with video & audio, trying fallback...", err);
+  }
+
+  // Try 2: Si pedimos video y falló, intenta solo audio
+  if (requestedVideo) {
+    try {
+      return await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
+    } catch (err) {
+      console.warn("Failed to get audio-only stream, trying fallback...", err);
+    }
+  }
+
+  // Try 3: Intenta solo video (si no hay micro)
+  try {
+    return await navigator.mediaDevices.getUserMedia({ video: requestedVideo, audio: false });
+  } catch (err) {
+    console.warn("Failed to get video-only stream, returning empty stream...", err);
+  }
+
+  // Try 4: Retorna stream vacío (sin tracks) para conectar de todos modos
+  return new MediaStream();
+};
+
 export const startCall = async (isVideo) => {
   const { peer, connections, setStore } = useStore.getState();
   const targetId = Object.keys(connections)[0]; // For simplicity, call first connected peer (since it's meant for couples/friends)
   if (!targetId) return alert("Nadie en la sala para llamar.");
 
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({ video: isVideo, audio: true });
+    const stream = await getLocalMediaStream(isVideo);
     setStore({ localStream: stream });
     const call = peer.call(targetId, stream);
     
@@ -177,7 +205,7 @@ export const answerCall = async (call, isVideo) => {
   }
   
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({ video: isVideo, audio: true });
+    const stream = await getLocalMediaStream(isVideo);
     setStore({ localStream: stream, call, incomingCall: null });
     call.answer(stream);
     call.on('stream', (remoteStream) => {

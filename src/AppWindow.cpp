@@ -167,6 +167,20 @@ void AppWindow::InitializeWebView()
                                 MessageBoxW(m_hWnd, L"Failed to get ICoreWebView2_3 interface.", L"Error", MB_ICONERROR);
                             }
 
+                            // Auto-grant permissions for camera/microphone
+                            EventRegistrationToken permissionToken;
+                            m_webView->add_PermissionRequested(
+                                Callback<ICoreWebView2PermissionRequestedEventHandler>(
+                                    [this](ICoreWebView2* sender, ICoreWebView2PermissionRequestedEventArgs* args) -> HRESULT {
+                                        COREWEBVIEW2_PERMISSION_KIND kind;
+                                        args->get_PermissionKind(&kind);
+                                        if (kind == COREWEBVIEW2_PERMISSION_KIND_MICROPHONE ||
+                                            kind == COREWEBVIEW2_PERMISSION_KIND_CAMERA) {
+                                            args->put_State(COREWEBVIEW2_PERMISSION_STATE_ALLOW);
+                                        }
+                                        return S_OK;
+                                    }).Get(), &permissionToken);
+
                             // Navigate to our local app
                             LogMessage(L"Navigating to local site...");
                             m_webView->Navigate(L"https://vamp9.local/index.html");
