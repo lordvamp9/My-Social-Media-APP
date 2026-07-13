@@ -148,9 +148,15 @@ export const sendFile = (file) => {
 
 // --- Call Logic (Video / Audio / Screen Share) ---
 const getLocalMediaStream = async (requestedVideo) => {
+  const cameraConstraints = requestedVideo ? {
+    width: { ideal: 1280, max: 1920 },
+    height: { ideal: 720, max: 1080 },
+    frameRate: { ideal: 30, max: 30 }
+  } : false;
+
   // Try 1: Tómalo todo (video y audio)
   try {
-    return await navigator.mediaDevices.getUserMedia({ video: requestedVideo, audio: true });
+    return await navigator.mediaDevices.getUserMedia({ video: cameraConstraints, audio: true });
   } catch (err) {
     console.warn("Failed to get stream with video & audio, trying fallback...", err);
   }
@@ -166,7 +172,7 @@ const getLocalMediaStream = async (requestedVideo) => {
 
   // Try 3: Intenta solo video (si no hay micro)
   try {
-    return await navigator.mediaDevices.getUserMedia({ video: requestedVideo, audio: false });
+    return await navigator.mediaDevices.getUserMedia({ video: cameraConstraints, audio: false });
   } catch (err) {
     console.warn("Failed to get video-only stream, returning empty stream...", err);
   }
@@ -224,7 +230,13 @@ export const startScreenShare = async () => {
   if (!call) return;
   
   try {
-    const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+    const screenStream = await navigator.mediaDevices.getDisplayMedia({
+      video: {
+        width: { ideal: 1920, max: 1920 },
+        height: { ideal: 1080, max: 1080 },
+        frameRate: { ideal: 60, max: 60 }
+      }
+    });
     
     // Replace the video track
     const videoTrack = screenStream.getVideoTracks()[0];
