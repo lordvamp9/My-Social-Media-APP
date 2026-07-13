@@ -138,8 +138,18 @@ void AppWindow::InitializeWebView()
                             wchar_t exePath[MAX_PATH];
                             GetModuleFileNameW(NULL, exePath, MAX_PATH);
                             std::filesystem::path appDir = std::filesystem::path(exePath).parent_path();
-                            // exe is in build_cpp/Release, so go up two levels to reach project root
-                            std::filesystem::path wwwDir = appDir.parent_path().parent_path() / "build" / "www";
+                            
+                            std::filesystem::path wwwDir;
+                            if (std::filesystem::exists(appDir / "build" / "www")) {
+                                // Production release layout (where build/www is next to the executable)
+                                wwwDir = appDir / "build" / "www";
+                            } else if (std::filesystem::exists(appDir.parent_path().parent_path() / "build" / "www")) {
+                                // Development layout (where the executable is inside build_cpp/Release or build_cpp/Debug)
+                                wwwDir = appDir.parent_path().parent_path() / "build" / "www";
+                            } else {
+                                // Fallback/default if neither exists
+                                wwwDir = appDir / "build" / "www";
+                            }
                             LogMessage(L"Mapped wwwDir: " + wwwDir.wstring());
 
                             ComPtr<ICoreWebView2_3> webView3;
