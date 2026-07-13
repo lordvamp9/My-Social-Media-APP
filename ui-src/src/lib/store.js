@@ -8,7 +8,8 @@ export const TYPE = {
   UPDATE_PFP: 'UPDATE_PFP',
   END_SESSION: 'END_SESSION',
   GAME_INVITE: 'GAME_INVITE',
-  GAME_MOVE: 'GAME_MOVE'
+  GAME_MOVE: 'GAME_MOVE',
+  CALL_REJECTED: 'CALL_REJECTED'
 };
 
 export const useStore = create((set, get) => ({

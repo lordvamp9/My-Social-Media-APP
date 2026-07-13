@@ -97,6 +97,10 @@ const handleConnection = (conn) => {
         alert("El host ha cerrado la sala.");
         useStore.getState().logout();
         break;
+      case TYPE.CALL_REJECTED:
+        useStore.getState().endCall();
+        addMessage({ id: uuidv4(), type: TYPE.SYSTEM, text: 'Llamada rechazada.', timestamp: Date.now() });
+        break;
     }
   });
 

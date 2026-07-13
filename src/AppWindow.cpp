@@ -7,6 +7,8 @@
 
 #pragma comment(lib, "shell32.lib")
 
+#include <shlobj.h>
+#pragma comment(lib, "ole32.lib")
 #define WM_TRAYICON (WM_USER + 1)
 #define IDI_APPICON 101
 
@@ -98,8 +100,21 @@ void AppWindow::RemoveTrayIcon()
 void AppWindow::InitializeWebView()
 {
     LogMessage(L"InitializeWebView started.");
+
+    // Determine User Data Folder in LocalAppData
+    std::wstring userDataFolder = L"";
+    PWSTR path = NULL;
+    if (SUCCEEDED(SHGetKnownFolderPath(FOLDERID_LocalAppData, 0, NULL, &path))) {
+        userDataFolder = path;
+        CoTaskMemFree(path);
+        userDataFolder += L"\\MySocialDesktop";
+        LogMessage(L"User data folder: " + userDataFolder);
+    } else {
+        LogMessage(L"Failed to get LocalAppData folder, fallback to default.");
+    }
+
     // Step 1: Create Environment
-    HRESULT hr = CreateCoreWebView2EnvironmentWithOptions(nullptr, nullptr, nullptr,
+    HRESULT hr = CreateCoreWebView2EnvironmentWithOptions(nullptr, userDataFolder.empty() ? nullptr : userDataFolder.c_str(), nullptr,
         Callback<ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler>(
             [this](HRESULT result, ICoreWebView2Environment* env) -> HRESULT {
                 LogMessage(L"CreateCoreWebView2EnvironmentCompletedHandler invoked. Result: " + std::to_wstring(result));

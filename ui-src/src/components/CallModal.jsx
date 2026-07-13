@@ -69,7 +69,13 @@ export default function CallModal() {
             <button onClick={() => answerCall(incomingCall, true)} className="flex-1 py-3 bg-green-500 hover:bg-green-600 text-white rounded-xl flex justify-center items-center gap-2 font-semibold shadow-lg shadow-green-500/30 transition-transform hover:scale-105">
               <PhoneCall className="w-5 h-5" /> Contestar
             </button>
-            <button onClick={() => { incomingCall.close(); useStore.getState().setStore({ incomingCall: null, ringtone: null }); }} className="flex-1 py-3 bg-red-500 hover:bg-red-600 text-white rounded-xl flex justify-center items-center gap-2 font-semibold shadow-lg shadow-red-500/30 transition-transform hover:scale-105">
+            <button onClick={() => { 
+              const state = useStore.getState();
+              const conn = state.connections[incomingCall.peer];
+              if (conn) conn.send({ type: 'CALL_REJECTED' });
+              incomingCall.close(); 
+              state.setStore({ incomingCall: null, ringtone: null }); 
+            }} className="flex-1 py-3 bg-red-500 hover:bg-red-600 text-white rounded-xl flex justify-center items-center gap-2 font-semibold shadow-lg shadow-red-500/30 transition-transform hover:scale-105">
               <PhoneOff className="w-5 h-5" /> Rechazar
             </button>
           </div>

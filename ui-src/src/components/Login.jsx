@@ -39,7 +39,6 @@ export default function Login() {
         alt="MSN Logo" 
         className="w-24 h-24 mb-4 drop-shadow-lg"
       />
-      <h1 className="text-2xl font-bold text-msn-text mb-6">Messenger</h1>
 
       <div className="w-full space-y-4">
         <div>

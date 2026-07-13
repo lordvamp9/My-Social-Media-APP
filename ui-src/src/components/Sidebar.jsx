@@ -16,7 +16,6 @@ export default function Sidebar() {
       <div className="p-4 msn-gradient border-b border-msn-border text-white shadow-md">
         <h2 className="font-bold text-lg mb-1 flex items-center gap-2">
           <img src="/logo.png" alt="logo" className="w-6 h-6" />
-          Messenger
         </h2>
         {isHost && (
           <div className="text-xs bg-black/20 rounded p-2 flex items-center justify-between cursor-pointer hover:bg-black/30" onClick={copyId}>
