@@ -107,7 +107,7 @@ void AppWindow::InitializeWebView()
     if (SUCCEEDED(SHGetKnownFolderPath(FOLDERID_LocalAppData, 0, NULL, &path))) {
         userDataFolder = path;
         CoTaskMemFree(path);
-        userDataFolder += L"\\MySocialDesktop";
+        userDataFolder += L"\\MySocialDesktop_v2";
         LogMessage(L"User data folder: " + userDataFolder);
     } else {
         LogMessage(L"Failed to get LocalAppData folder, fallback to default.");
@@ -120,7 +120,7 @@ void AppWindow::InitializeWebView()
                 LogMessage(L"CreateCoreWebView2EnvironmentCompletedHandler invoked. Result: " + std::to_wstring(result));
                 if (FAILED(result) || !env) {
                     LogMessage(L"Failed to create WebView2 Environment. HRESULT: " + std::to_wstring(result));
-                    MessageBoxW(m_hWnd, (L"Failed to create WebView2 Environment. HRESULT: " + std::to_wstring(result)).c_str(), L"Error", MB_ICONERROR);
+                    MessageBoxW(m_hWnd, (L"Failed to create WebView2 Environment. HRESULT: " + std::to_wstring(result) + L"\n\nPor favor, asegúrate de haber extraído todos los archivos del .zip en una carpeta antes de abrir la aplicación.").c_str(), L"Error", MB_ICONERROR);
                     return result;
                 }
                 m_webViewEnvironment = env;
@@ -133,7 +133,7 @@ void AppWindow::InitializeWebView()
                             LogMessage(L"CreateCoreWebView2ControllerCompletedHandler invoked. Result: " + std::to_wstring(result));
                             if (FAILED(result) || !controller) {
                                 LogMessage(L"Failed to create WebView2 Controller. HRESULT: " + std::to_wstring(result));
-                                MessageBoxW(m_hWnd, (L"Failed to create WebView2 Controller. HRESULT: " + std::to_wstring(result)).c_str(), L"Error", MB_ICONERROR);
+                                MessageBoxW(m_hWnd, (L"Failed to create WebView2 Controller. HRESULT: " + std::to_wstring(result) + L"\n\nEsto suele ocurrir si hay una versión anterior de la app corriendo en segundo plano. Ve a la bandeja del sistema (junto al reloj) y cierra el icono viejo.").c_str(), L"Error", MB_ICONERROR);
                                 return result;
                             }
                             m_webViewController = controller;
@@ -155,14 +155,16 @@ void AppWindow::InitializeWebView()
                             std::filesystem::path appDir = std::filesystem::path(exePath).parent_path();
                             
                             std::filesystem::path wwwDir;
-                            if (std::filesystem::exists(appDir / "build" / "www")) {
-                                wwwDir = appDir / "build" / "www";
+                            if (std::filesystem::exists(appDir / "www")) {
+                                wwwDir = appDir / "www"; // When running from extracted zip
+                            } else if (std::filesystem::exists(appDir / "build" / "www")) {
+                                wwwDir = appDir / "build" / "www"; // Local dev
                             } else if (std::filesystem::exists(appDir.parent_path() / "build" / "www")) {
                                 wwwDir = appDir.parent_path() / "build" / "www";
                             } else if (std::filesystem::exists(appDir.parent_path().parent_path() / "build" / "www")) {
                                 wwwDir = appDir.parent_path().parent_path() / "build" / "www";
                             } else {
-                                wwwDir = appDir / "build" / "www";
+                                wwwDir = appDir / "www";
                             }
                             LogMessage(L"Mapped wwwDir: " + wwwDir.wstring());
 
