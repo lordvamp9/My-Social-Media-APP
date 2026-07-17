@@ -244,7 +244,7 @@ export const startScreenShare = async () => {
     
     // Replace the video track
     const videoTrack = screenStream.getVideoTracks()[0];
-    const sender = call.peerConnection.getSenders().find(s => s.track.kind === 'video');
+    const sender = call.peerConnection.getSenders().find(s => s.track && s.track.kind === 'video');
     if (sender) {
       sender.replaceTrack(videoTrack);
     } else {

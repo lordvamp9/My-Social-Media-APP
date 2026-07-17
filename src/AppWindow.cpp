@@ -156,13 +156,12 @@ void AppWindow::InitializeWebView()
                             
                             std::filesystem::path wwwDir;
                             if (std::filesystem::exists(appDir / "build" / "www")) {
-                                // Production release layout (where build/www is next to the executable)
                                 wwwDir = appDir / "build" / "www";
+                            } else if (std::filesystem::exists(appDir.parent_path() / "build" / "www")) {
+                                wwwDir = appDir.parent_path() / "build" / "www";
                             } else if (std::filesystem::exists(appDir.parent_path().parent_path() / "build" / "www")) {
-                                // Development layout (where the executable is inside build_cpp/Release or build_cpp/Debug)
                                 wwwDir = appDir.parent_path().parent_path() / "build" / "www";
                             } else {
-                                // Fallback/default if neither exists
                                 wwwDir = appDir / "build" / "www";
                             }
                             LogMessage(L"Mapped wwwDir: " + wwwDir.wstring());
@@ -182,17 +181,12 @@ void AppWindow::InitializeWebView()
                                 MessageBoxW(m_hWnd, L"Failed to get ICoreWebView2_3 interface.", L"Error", MB_ICONERROR);
                             }
 
-                            // Auto-grant permissions for camera/microphone
+                            // Auto-grant permissions for everything (camera/microphone/screen capture)
                             EventRegistrationToken permissionToken;
                             m_webView->add_PermissionRequested(
                                 Callback<ICoreWebView2PermissionRequestedEventHandler>(
                                     [this](ICoreWebView2* sender, ICoreWebView2PermissionRequestedEventArgs* args) -> HRESULT {
-                                        COREWEBVIEW2_PERMISSION_KIND kind;
-                                        args->get_PermissionKind(&kind);
-                                        if (kind == COREWEBVIEW2_PERMISSION_KIND_MICROPHONE ||
-                                            kind == COREWEBVIEW2_PERMISSION_KIND_CAMERA) {
-                                            args->put_State(COREWEBVIEW2_PERMISSION_STATE_ALLOW);
-                                        }
+                                        args->put_State(COREWEBVIEW2_PERMISSION_STATE_ALLOW);
                                         return S_OK;
                                     }).Get(), &permissionToken);
 

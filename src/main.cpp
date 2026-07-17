@@ -14,6 +14,20 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         return FALSE;
     }
 
+    // Prevent multiple instances
+    HANDLE hMutex = CreateMutexW(NULL, TRUE, L"MySocialDesktop_SingleInstance_Mutex");
+    if (GetLastError() == ERROR_ALREADY_EXISTS)
+    {
+        // Find existing window and bring to front
+        HWND hExisting = FindWindowW(L"MySocialDesktopWindowClass", L"MySocialDesktop");
+        if (hExisting) {
+            ShowWindow(hExisting, SW_RESTORE);
+            SetForegroundWindow(hExisting);
+        }
+        CoUninitialize();
+        return 0;
+    }
+
     AppWindow app(hInstance);
 
     if (!app.Initialize(nCmdShow))
