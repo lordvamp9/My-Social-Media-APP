@@ -184,18 +184,42 @@ export const sendFile = (file) => {
 };
 
 // --- Call Logic ---
+
+// Creates a tiny 2×2 black canvas track — nearly zero bandwidth, ensures
+// replaceTrack() always works for screen share even on audio-only calls.
+function createBlankVideoTrack() {
+  const canvas = Object.assign(document.createElement('canvas'), { width: 2, height: 2 });
+  canvas.getContext('2d').fillRect(0, 0, 2, 2);
+  const track = canvas.captureStream(1).getVideoTracks()[0];
+  track.enabled = false; // Disabled until screen share activates it via replaceTrack
+  return track;
+}
+
 const getLocalMediaStream = async (requestedVideo) => {
   const cameraConstraints = requestedVideo
     ? { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } }
     : false;
+
+  // Try: camera (if requested) + audio
   try {
-    return await navigator.mediaDevices.getUserMedia({ video: cameraConstraints, audio: true });
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: cameraConstraints || false,
+      audio: true,
+    });
+    // Always ensure there is a video track for replaceTrack compatibility
+    if (!stream.getVideoTracks().length) {
+      stream.addTrack(createBlankVideoTrack());
+    }
+    return stream;
   } catch (_) {}
-  if (requestedVideo) {
-    try { return await navigator.mediaDevices.getUserMedia({ video: false, audio: true }); } catch (_) {}
-  }
-  try { return await navigator.mediaDevices.getUserMedia({ video: cameraConstraints, audio: false }); } catch (_) {}
-  return new MediaStream();
+
+  // Fallback: audio only + blank video
+  const stream = new MediaStream([createBlankVideoTrack()]);
+  try {
+    const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    audioStream.getAudioTracks().forEach(t => stream.addTrack(t));
+  } catch (_) {}
+  return stream;
 };
 
 export const startCall = async (isVideo) => {
@@ -231,29 +255,54 @@ export const answerCall = async (call, isVideo) => {
 };
 
 export const startScreenShare = async () => {
-  const { call, localStream, setStore } = useStore.getState();
+  const { call, localStream, setStore, isScreenSharing } = useStore.getState();
   if (!call) return;
+
+  // If already sharing, stop sharing and revert
+  if (isScreenSharing) {
+    const sender = call.peerConnection.getSenders().find(s => s.track && s.track.kind === 'video');
+    const camTrack = localStream?.getVideoTracks().find(t => !t.label.toLowerCase().includes('screen'));
+    if (sender && camTrack) await sender.replaceTrack(camTrack);
+    setStore({ isScreenSharing: false });
+    return;
+  }
+
+  // Grab a video sender — guaranteed to exist because getLocalMediaStream always adds one
+  const sender = call.peerConnection.getSenders().find(s => s.track && s.track.kind === 'video');
+  if (!sender) {
+    toast('No se encontró un canal de video activo. Inicia una videollamada primero.', 'error');
+    return;
+  }
+
   try {
     const screenStream = await navigator.mediaDevices.getDisplayMedia({
-      video: { width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 60 } },
+      video: {
+        width:     { ideal: 1920 },
+        height:    { ideal: 1080 },
+        frameRate: { ideal: 60 },
+      },
+      audio: false, // Screen audio causes echo; user can share mic via existing audio track
     });
-    const videoTrack = screenStream.getVideoTracks()[0];
-    const sender = call.peerConnection.getSenders().find((s) => s.track && s.track.kind === 'video');
-    if (sender) {
-      sender.replaceTrack(videoTrack);
-    } else {
-      call.peerConnection.addTrack(videoTrack, screenStream);
-    }
-    videoTrack.onended = () => {
-      if (localStream) {
-        const camTrack = localStream.getVideoTracks()[0];
-        if (camTrack && sender) sender.replaceTrack(camTrack);
+
+    const screenTrack = screenStream.getVideoTracks()[0];
+
+    // Enable the sender track before replacing (in case it was a disabled blank track)
+    await sender.replaceTrack(screenTrack);
+    setStore({ isScreenSharing: true });
+
+    // When user clicks "Stop sharing" in OS dialog
+    screenTrack.onended = async () => {
+      const camTrack = localStream?.getVideoTracks().find(t => !t.label.toLowerCase().includes('screen'));
+      if (camTrack) {
+        camTrack.enabled = true;
+        await sender.replaceTrack(camTrack);
       }
       setStore({ isScreenSharing: false });
     };
-    setStore({ isScreenSharing: true });
   } catch (err) {
-    console.error('Error sharing screen', err);
-    toast('No se pudo compartir la pantalla.', 'error');
+    if (err.name !== 'NotAllowedError') { // User cancelled the picker — not an error
+      console.error('Screen share error:', err);
+      toast('No se pudo compartir la pantalla.', 'error');
+    }
   }
 };

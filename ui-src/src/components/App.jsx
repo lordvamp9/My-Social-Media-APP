@@ -6,7 +6,7 @@ import CallModal from './CallModal';
 import Toast from './Toast';
 
 export default function App() {
-  const { peer, incomingCall } = useStore();
+  const { peer, incomingCall, callError } = useStore();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -19,10 +19,10 @@ export default function App() {
     <div className="h-full w-full flex items-center justify-center relative">
       {!peer ? <Login /> : <ChatLayout />}
 
-      {/* WebRTC Modals */}
-      {(useStore.getState().call || incomingCall || useStore.getState().callError) && <CallModal />}
+      {/* Overlays: incoming call + error only (active call is embedded in ChatLayout > CallPanel) */}
+      {(incomingCall || callError) && <CallModal />}
 
-      {/* [Punto 3] Global toast notifications */}
+      {/* Global toast notifications */}
       <Toast />
     </div>
   );
