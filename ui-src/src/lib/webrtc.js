@@ -24,7 +24,10 @@ export const initPeer = (isHost, inputRoomId = '', roomPin = '') => {
   const myId = isHost ? `msn-${uuidv4().substring(0, 8)}` : undefined;
 
   const peer = new Peer(myId, {
-    // [Punto 1] Will be swapped to own server URL after Render deploy
+    // [Punto 1] Own PeerJS signaling server hosted on Render (free tier)
+    host: 'my-social-media-app-h1v1.onrender.com',
+    port: 443,
+    path: '/',
     secure: true,
     config: {
       iceServers: [
