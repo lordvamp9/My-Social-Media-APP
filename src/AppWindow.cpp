@@ -282,7 +282,7 @@ LRESULT CALLBACK AppWindow::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPAR
         return pThis->HandleMessage(hWnd, message, wParam, lParam);
     }
 
-    return DefWindowProc(hWnd, message, wParam, lParam);
+    return DefWindowProcW(hWnd, message, wParam, lParam);
 }
 
 LRESULT AppWindow::HandleMessage(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
@@ -333,7 +333,7 @@ LRESULT AppWindow::HandleMessage(HWND hWnd, UINT message, WPARAM wParam, LPARAM 
         PostQuitMessage(0);
         break;
     default:
-        return DefWindowProc(hWnd, message, wParam, lParam);
+        return DefWindowProcW(hWnd, message, wParam, lParam);
     }
     return 0;
 }
@@ -341,9 +341,9 @@ LRESULT AppWindow::HandleMessage(HWND hWnd, UINT message, WPARAM wParam, LPARAM 
 void AppWindow::RunMessageLoop()
 {
     MSG msg;
-    while (GetMessage(&msg, nullptr, 0, 0))
+    while (GetMessageW(&msg, nullptr, 0, 0))
     {
         TranslateMessage(&msg);
-        DispatchMessage(&msg);
+        DispatchMessageW(&msg);
     }
 }
