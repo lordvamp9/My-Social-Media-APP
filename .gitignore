@@ -8,8 +8,9 @@ build/
 
 # --- UI dependencies and build cache ---
 ui-src/node_modules/
-ui-src/.astro/
+ui-src/.vite/
 ui-src/dist/
+
 
 # --- Debug and log files ---
 *.log

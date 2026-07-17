@@ -9,7 +9,7 @@ A private, session-based desktop social application for Windows. Inspired by the
 ![C++](https://img.shields.io/badge/C++17-00599C?style=for-the-badge&logo=cplusplus&logoColor=white)
 ![CMake](https://img.shields.io/badge/CMake-064F8C?style=for-the-badge&logo=cmake&logoColor=white)
 ![WebView2](https://img.shields.io/badge/WebView2-0078D4?style=for-the-badge&logo=microsoft-edge&logoColor=white)
-![Astro](https://img.shields.io/badge/Astro-BC52EE?style=for-the-badge&logo=astro&logoColor=white)
+![Vite](https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white)
 ![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
 ![TailwindCSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)
 ![WebRTC](https://img.shields.io/badge/WebRTC-333333?style=for-the-badge&logo=webrtc&logoColor=white)
@@ -37,21 +37,23 @@ A private, session-based desktop social application for Windows. Inspired by the
 
 The application uses a **C++ Win32 shell** with an embedded **WebView2** control. This gives the performance and integration of a native Windows application while rendering the UI with modern web technologies. There is no Electron or Chromium bundled — WebView2 uses the Microsoft Edge engine already present on the system.
 
+The UI is a standard **Vite + React** SPA (Single Page Application) compiled to static files and served locally via a virtual host mapping.
+
 ```
 MySocialDesktop/
 ├── src/                    # C++ native shell
 │   ├── main.cpp            # Entry point (WinMain)
 │   ├── AppWindow.cpp       # Window creation, WebView2 setup, tray icon
 │   └── AppWindow.h         # AppWindow class declaration
-├── ui-src/                 # Web UI (Astro + React + Tailwind)
+├── ui-src/                 # Web UI (Vite + React + Tailwind)
 │   ├── src/
-│   │   ├── components/     # React components (Chat, Sidebar, CallModal, etc.)
-│   │   ├── layouts/        # Astro page layout
+│   │   ├── components/     # React components (App, Chat, Sidebar, CallModal, etc.)
 │   │   ├── lib/            # WebRTC, PeerJS, state management (Zustand)
-│   │   ├── styles/         # Global CSS
-│   │   └── pages/          # Astro pages
+│   │   ├── main.jsx        # React entry point
+│   │   └── index.css       # Global styles + Tailwind theme
 │   ├── public/             # Static assets (icons, backgrounds, sounds)
-│   ├── astro.config.mjs    # Astro configuration (output to ../build/www)
+│   ├── index.html          # HTML shell
+│   ├── vite.config.js      # Vite configuration (output to ../build/www)
 │   └── package.json
 ├── res/                    # Application icon resource
 │   └── app.ico
@@ -84,6 +86,8 @@ cd ui-src
 npm install
 npm run build
 ```
+
+> Uses Vite to compile React + Tailwind into static files.
 
 This outputs the compiled web assets to `build/www/`.
 
