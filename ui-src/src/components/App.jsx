@@ -3,6 +3,7 @@ import { useStore } from '../lib/store';
 import Login from './Login';
 import ChatLayout from './ChatLayout';
 import CallModal from './CallModal';
+import Toast from './Toast';
 
 export default function App() {
   const { peer, incomingCall } = useStore();
@@ -17,9 +18,12 @@ export default function App() {
   return (
     <div className="h-full w-full flex items-center justify-center relative">
       {!peer ? <Login /> : <ChatLayout />}
-      
+
       {/* WebRTC Modals */}
       {(useStore.getState().call || incomingCall || useStore.getState().callError) && <CallModal />}
+
+      {/* [Punto 3] Global toast notifications */}
+      <Toast />
     </div>
   );
 }
