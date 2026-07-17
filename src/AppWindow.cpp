@@ -34,9 +34,9 @@ bool AppWindow::Initialize(int nCmdShow)
     LogMessage(L"Initializing AppWindow...");
     const wchar_t CLASS_NAME[] = L"MySocialDesktopWindowClass";
 
-    // Load custom icon from embedded resource
-    HICON hIconBig = (HICON)LoadImageW(m_hInstance, MAKEINTRESOURCEW(IDI_APPICON), IMAGE_ICON, 48, 48, LR_DEFAULTCOLOR);
-    HICON hIconSmall = (HICON)LoadImageW(m_hInstance, MAKEINTRESOURCEW(IDI_APPICON), IMAGE_ICON, 16, 16, LR_DEFAULTCOLOR);
+    // Use default Windows application icon to bypass IconCache issues that cause the "M" to get stuck
+    HICON hIconBig = LoadIcon(NULL, IDI_APPLICATION);
+    HICON hIconSmall = LoadIcon(NULL, IDI_APPLICATION);
 
     WNDCLASSEXW wc = { };
     wc.cbSize        = sizeof(WNDCLASSEXW);
@@ -50,7 +50,7 @@ bool AppWindow::Initialize(int nCmdShow)
 
     RegisterClassExW(&wc);
 
-    // Create a standard window first, we can make it borderless later by adjusting styles
+    // Create a standard window
     m_hWnd = CreateWindowExW(
         0, CLASS_NAME, L"MySocialDesktop",
         WS_OVERLAPPEDWINDOW,
@@ -64,15 +64,16 @@ bool AppWindow::Initialize(int nCmdShow)
         return false;
     }
 
-    // Set the window icon explicitly (taskbar + title bar)
     SendMessage(m_hWnd, WM_SETICON, ICON_BIG, (LPARAM)hIconBig);
     SendMessage(m_hWnd, WM_SETICON, ICON_SMALL, (LPARAM)hIconSmall);
 
     SetupTrayIcon(m_hWnd);
-    InitializeWebView();
-
+    
+    // CRITICAL: Window MUST be visible before initializing WebView2 to prevent HRESULT -2147019873 (ERROR_INVALID_STATE)
     ShowWindow(m_hWnd, nCmdShow);
     UpdateWindow(m_hWnd);
+
+    InitializeWebView();
 
     LogMessage(L"AppWindow initialized successfully.");
     return true;
@@ -86,7 +87,7 @@ void AppWindow::SetupTrayIcon(HWND hWnd)
     m_nid.uID = 1;
     m_nid.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
     m_nid.uCallbackMessage = WM_TRAYICON;
-    m_nid.hIcon = (HICON)LoadImageW(m_hInstance, MAKEINTRESOURCEW(IDI_APPICON), IMAGE_ICON, 32, 32, LR_DEFAULTCOLOR);
+    m_nid.hIcon = LoadIcon(NULL, IDI_APPLICATION);
     wcscpy_s(m_nid.szTip, L"MySocialDesktop");
 
     Shell_NotifyIconW(NIM_ADD, &m_nid);

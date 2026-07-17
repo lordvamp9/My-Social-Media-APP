@@ -15,7 +15,6 @@ FetchContent_MakeAvailable(webview2)
 add_executable(MySocialDesktop WIN32 
     src/main.cpp 
     src/AppWindow.cpp
-    app.rc
 )
 
 target_include_directories(MySocialDesktop PRIVATE ${webview2_SOURCE_DIR}/build/native/include)
